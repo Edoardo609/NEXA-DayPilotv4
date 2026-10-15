@@ -1,0 +1,39 @@
+workflows:
+  android-html-app:
+    name: NEXA DayPilot Connected
+    max_build_duration: 15
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - ionic-credentials
+      node: latest
+      java: 17
+    triggering:
+      events:
+        - push
+    scripts:
+      - name: Build Cordova APK with Network and Scroll
+        script: |
+          npm install -g cordova
+          mkdir -p workspace
+          cp -R * workspace/ || true
+          rm -rf workspace/nexa-app workspace/workspace || true
+          rm -f workspace/codemagic.yaml workspace/icon29.png || true
+          cordova create nexa-app com.edoardo.nexadaypilot "NEXA DayPilot"
+          cd nexa-app
+          rm -rf www/*
+          cp -R ../workspace/* www/ || true
+          if [ -f "../icon29.png" ]; then cp ../icon29.png www/icon29.png; fi
+          
+          # Forzatura CSS per garantire lo scorrimento fluido della pagina intera
+          if [ -f "www/index.html" ]; then
+            sed -i '' 's/<\/head>/<style>html, body { overflow: auto !important; -webkit-overflow-scrolling: touch !important; height: 100% !important; max-height: none !important; position: relative !important; }<\/style><\/head>/' www/index.html || sed -i 's/<\/head>/<style>html, body { overflow: auto !important; -webkit-overflow-scrolling: touch !important; height: 100% !important; max-height: none !important; position: relative !important; }<\/style><\/head>/' www/index.html || true
+          fi
+          
+          # Configurazione config.xml con permessi internet per notifiche push e icon29.png
+          echo '<widget id="com.edoardo.nexadaypilot" version="1.0.0" xmlns="http://w3.org" xmlns:android="http://android.com" xmlns:cdv="http://apache.org"><name>NEXA DayPilot</name><description>NEXA DayPilot Notification Connected App</description><author>Edoardo</author><content src="index.html" /><access origin="*" /><allow-navigation href="*" /><allow-navigation href="http://*/*" /><allow-navigation href="https://*/*" /><allow-intent href="http://*/*" /><allow-intent href="https://*/*" /><platform name="android"><icon src="www/icon29.png" /><config-file parent="/*" target="AndroidManifest.xml"><uses-permission android:name="android.permission.INTERNET" /><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" /><uses-permission android:name="android.permission.WAKE_LOCK" /></config-file><edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application"><application android:usesCleartextTraffic="true" /></edit-config></platform></widget>' > config.xml
+          
+          cordova platform add android --noscript
+          cordova build android --debug --device
+    artifacts:
+      - nexa-app/platforms/android/app/build/outputs/apk/debug/*.apk
