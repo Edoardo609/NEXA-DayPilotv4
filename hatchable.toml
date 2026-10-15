@@ -1,0 +1,5 @@
+[[secret]]
+name = "GROQ_API_KEY"
+required = true
+expose = true
+description = "Chiave API Groq per la chat e la pianificazione AI di NEXA DayPilot."
